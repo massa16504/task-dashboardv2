@@ -14,6 +14,8 @@ if uploaded_file:
 
         df.columns = df.columns.str.strip().str.lower()
         df.rename(columns={
+            'nutanix': 'vendor',
+            'outcome': 'service',
             'task': 'task',
             'target date': 'target_date',
             'status': 'status',
@@ -26,12 +28,21 @@ if uploaded_file:
 
         with st.sidebar:
             st.header("🔍 Filters")
-            owners = df['owner'].dropna().unique().tolist()
-            selected_owners = st.multiselect("Filter by Owner", owners, default=owners)
-            statuses = df['status'].dropna().unique().tolist()
-            selected_statuses = st.multiselect("Filter by Status", statuses, default=statuses)
+            vendor_options = df['vendor'].dropna().unique().tolist()
+            selected_vendors = st.multiselect("Filter by Vendor", vendor_options, default=vendor_options)
+
+            service_options = df['service'].dropna().unique().tolist()
+            selected_services = st.multiselect("Filter by Service", service_options, default=service_options)
+
+            owner_options = df['owner'].dropna().unique().tolist()
+            selected_owners = st.multiselect("Filter by Owner", owner_options, default=owner_options)
+
+            status_options = df['status'].dropna().unique().tolist()
+            selected_statuses = st.multiselect("Filter by Status", status_options, default=status_options)
 
         filtered_df = df[
+            (df['vendor'].isin(selected_vendors)) &
+            (df['service'].isin(selected_services)) &
             (df['owner'].isin(selected_owners)) &
             (df['status'].isin(selected_statuses))
         ]
@@ -54,17 +65,17 @@ if uploaded_file:
         st.markdown("---")
         st.subheader("⚠️ Overdue Tasks by Owner")
         if not overdue_df.empty:
-            overdue_count = overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks')
+            overdue_count = overdue_df.groupby(['owner']).size().reset_index(name='Overdue Tasks')
             bar_chart = px.bar(overdue_count, x='owner', y='Overdue Tasks', color='owner', title="Overdue Tasks by Owner")
             st.plotly_chart(bar_chart, use_container_width=True)
-            st.dataframe(overdue_df[['task', 'owner', 'status', 'target_date']].sort_values(by='target_date'))
+            st.dataframe(overdue_df[['vendor', 'service', 'task', 'owner', 'status', 'target_date']].sort_values(by='target_date'))
         else:
             st.success("🎉 No overdue tasks!")
 
         st.markdown("---")
-        st.subheader("👥 Task Distribution by Owner")
-        task_count = filtered_df.groupby('owner').size().reset_index(name='Task Count')
-        owner_chart = px.bar(task_count, x='owner', y='Task Count', color='owner', title="Tasks per Owner")
+        st.subheader("👥 Task Distribution by Owner and Vendor")
+        task_count = filtered_df.groupby(['vendor', 'owner']).size().reset_index(name='Task Count')
+        owner_chart = px.bar(task_count, x='owner', y='Task Count', color='vendor', title="Tasks by Owner and Vendor", barmode='stack')
         st.plotly_chart(owner_chart, use_container_width=True)
 
         st.subheader("📆 Timeline View")
@@ -75,7 +86,7 @@ if uploaded_file:
             x_end="target_date",
             y="task_display",
             color="status",
-            hover_name="owner",
+            hover_data=["vendor", "service", "owner"],
             title="Task Timeline by Target Date"
         )
         timeline.update_yaxes(autorange="reversed")
