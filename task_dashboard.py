@@ -36,11 +36,10 @@ if uploaded_file:
         else:
             st.success("No overdue tasks!")
 
-        st.subheader("📆 Task Timeline")
-        df['start_date'] = pd.to_datetime('today')
-        timeline = px.timeline(df, x_start='start_date', x_end='target_date', y='task', color='status', hover_data=['vendor', 'owner'])
-        timeline.update_yaxes(autorange="reversed")
-        st.plotly_chart(timeline)
+        st.subheader("📊 Task Status Distribution")
+        status_count = df.groupby('status').size().reset_index(name='Count')
+        pie_chart = px.pie(status_count, names='status', values='Count', title="Task Status Breakdown")
+        st.plotly_chart(pie_chart)
 
         st.subheader("📄 All Tasks")
         st.dataframe(df)
