@@ -14,11 +14,14 @@ if uploaded_file:
         sheet = xls.sheet_names[0]
         raw_df = pd.read_excel(xls, sheet_name=sheet, header=None)
 
-        header_idx = raw_df.index[raw_df.iloc[:,0].astype(str).str.lower().str.contains('task')].tolist()
+        header_idx = raw_df.index[raw_df.apply(lambda row: row.astype(str).str.lower().str.contains('task').any(), axis=1)].tolist()
         header_idx = header_idx[0] if header_idx else 0
 
         df = pd.read_excel(xls, sheet_name=sheet, header=header_idx)
         df.columns = df.columns.str.strip().str.lower()
+
+        if 'vendor' not in df.columns:
+            raise Exception("'vendor' column not found in the uploaded file.")
 
         df.rename(columns={'target date': 'target_date', 'action with': 'owner'}, inplace=True)
 
