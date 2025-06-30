@@ -23,9 +23,14 @@ if uploaded_file:
         if 'task' not in df.columns:
             raise Exception("'task' column not found in the uploaded file.")
 
+        # Rename second column to vendor if needed
+        if df.columns[1] != 'vendor':
+            df.columns.values[1] = 'vendor'
+
         df.rename(columns={'target date': 'target_date', 'action with': 'owner'}, inplace=True)
 
         df['task'] = df['task'].astype(str).fillna('').str.strip()
+        df['vendor'] = df['vendor'].astype(str).fillna('').str.strip()
         df['owner'] = df['owner'].fillna('Unassigned')
 
         df = df[df['task'].apply(lambda x: x.strip() != '' and x.lower() not in ['details', 'task'])]
@@ -45,7 +50,7 @@ if uploaded_file:
         if not overdue_df.empty:
             chart = px.bar(overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks'), x='owner', y='Overdue Tasks')
             st.plotly_chart(chart)
-            st.dataframe(overdue_df[['task', 'owner', 'status', 'target_date']])
+            st.dataframe(overdue_df[['vendor', 'task', 'owner', 'status', 'target_date', 'notes'] if 'notes' in overdue_df.columns else ['vendor', 'task', 'owner', 'status', 'target_date']])
         else:
             st.success("No overdue tasks!")
 
