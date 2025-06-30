@@ -20,19 +20,18 @@ if uploaded_file:
         df = pd.read_excel(xls, sheet_name=sheet, header=header_idx)
         df.columns = df.columns.str.strip().str.lower()
 
-        if 'vendor' not in df.columns:
-            raise Exception("'vendor' column not found in the uploaded file.")
+        if 'task' not in df.columns:
+            raise Exception("'task' column not found in the uploaded file.")
 
         df.rename(columns={'target date': 'target_date', 'action with': 'owner'}, inplace=True)
 
-        df['vendor'] = df['vendor'].astype(str).fillna('').str.strip()
         df['task'] = df['task'].astype(str).fillna('').str.strip()
+        df['owner'] = df['owner'].fillna('Unassigned')
 
-        df = df[(df['vendor'] != '') & (df['vendor'].str.lower() != 'vendor') & (~df['task'].str.lower().isin(['details', 'task', '']))]
+        df = df[(~df['task'].str.lower().isin(['details', 'task', '']))]
 
         df['target_date'] = pd.to_datetime(df['target_date'], errors='coerce')
         df['status'] = df['status'].fillna('').str.strip().str.title()
-        df['owner'] = df['owner'].fillna('Unassigned')
 
         overdue_df = df[(df['status'] != 'Completed') & (df['target_date'] < datetime.today())]
 
@@ -44,7 +43,7 @@ if uploaded_file:
         if not overdue_df.empty:
             chart = px.bar(overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks'), x='owner', y='Overdue Tasks')
             st.plotly_chart(chart)
-            st.dataframe(overdue_df[['vendor', 'task', 'owner', 'status', 'target_date']])
+            st.dataframe(overdue_df[['task', 'owner', 'status', 'target_date']])
         else:
             st.success("No overdue tasks!")
 
