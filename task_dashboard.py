@@ -10,26 +10,21 @@ uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
-        excel_file = pd.ExcelFile(uploaded_file)
-        raw_df = pd.read_excel(excel_file, sheet_name=0, header=None)
-        header_row_idx = raw_df.index[raw_df.iloc[:, 0].astype(str).str.lower().str.contains("task")].tolist()
-        header_row = header_row_idx[0] if header_row_idx else 0
+        df_raw = pd.read_excel(uploaded_file, sheet_name=0, header=1)
+        df_raw.columns = df_raw.columns.str.strip().str.lower()
 
-        df = pd.read_excel(excel_file, sheet_name=0, header=header_row)
-        df.columns = df.columns.str.strip().str.lower()
+        df_raw['vendor'] = df_raw['vendor'].astype(str).fillna('').str.strip()
+        df = df_raw.rename(columns={'target date': 'target_date', 'action with': 'owner'})
 
-        df.rename(columns={'nutanix': 'vendor', 'action with': 'owner', 'target date': 'target_date'}, inplace=True)
+        # Keep only rows where vendor looks like a real vendor (non-empty, not placeholder)
+        df = df[(df['vendor'] != '') & (~df['vendor'].str.lower().isin(['vendor', 'details']))]
 
-        for col in ['vendor', 'task', 'target_date', 'status', 'owner']:
-            if col not in df.columns:
-                df[col] = ''
+        df['task'] = df['task'].astype(str).fillna('').str.strip()
+        df = df[(~df['task'].str.lower().isin(['details', 'task', '']))]
 
         df['target_date'] = pd.to_datetime(df['target_date'], errors='coerce')
         df['status'] = df['status'].fillna('').str.strip().str.title()
-        df['owner'] = df['owner'].fillna("Unassigned")
-        df['task'] = df['task'].fillna('')
-
-        df = df[(~df['vendor'].str.lower().isin(['vendor', ''])) & (~df['task'].str.lower().isin(['details', 'task', '']))]
+        df['owner'] = df['owner'].fillna('Unassigned')
 
         overdue_df = df[(df['status'] != 'Completed') & (df['target_date'] < datetime.today())]
 
@@ -52,6 +47,7 @@ if uploaded_file:
 
         st.subheader("📄 All Tasks")
         st.dataframe(df)
+
     except Exception as e:
         st.error(f"Error processing file: {e}")
 else:
