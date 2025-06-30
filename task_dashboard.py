@@ -20,7 +20,7 @@ if uploaded_file:
         df['status'] = df['status'].fillna('').str.strip().str.title()
         df['owner'] = df['owner'].fillna("Unassigned")
 
-        df = df[(df['vendor'].str.lower() != 'vendor') & (df['task'].str.lower() != 'details')]
+        df = df[(df['vendor'].str.lower() != 'vendor') & (df['task'].str.lower() != 'details') & (df['task'].str.strip() != '')]
 
         overdue_df = df[(df['status'] != 'Completed') & (df['target_date'] < datetime.today())]
 
