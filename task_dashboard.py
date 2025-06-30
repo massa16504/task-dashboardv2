@@ -28,10 +28,12 @@ if uploaded_file:
         df['task'] = df['task'].astype(str).fillna('').str.strip()
         df['owner'] = df['owner'].fillna('Unassigned')
 
-        df = df[(~df['task'].str.lower().isin(['details', 'task', '']))]
+        df = df[df['task'].apply(lambda x: x.strip() != '' and x.lower() not in ['details', 'task'])]
 
         df['target_date'] = pd.to_datetime(df['target_date'], errors='coerce')
         df['status'] = df['status'].fillna('').str.strip().str.title()
+
+        df = df[df['status'] != '']
 
         overdue_df = df[(df['status'] != 'Completed') & (df['target_date'] < datetime.today())]
 
