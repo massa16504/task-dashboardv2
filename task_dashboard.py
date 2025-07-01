@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 import plotly.express as px
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="Task Dashboard", layout="wide")
 st.title("📊 Task Dashboard")
@@ -23,7 +24,6 @@ if uploaded_file:
         if 'task' not in df.columns:
             raise Exception("'task' column not found in the uploaded file.")
 
-        # Rename second column to vendor if needed
         if df.columns[1] != 'vendor':
             df.columns.values[1] = 'vendor'
 
@@ -50,7 +50,18 @@ if uploaded_file:
         if not overdue_df.empty:
             chart = px.bar(overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks'), x='owner', y='Overdue Tasks')
             st.plotly_chart(chart)
-            st.dataframe(overdue_df[['vendor', 'task', 'owner', 'status', 'target_date', 'notes'] if 'notes' in overdue_df.columns else ['vendor', 'task', 'owner', 'status', 'target_date']])
+
+            cols_to_display = ['vendor', 'task', 'owner', 'status', 'target_date']
+            if 'notes' in overdue_df.columns:
+                cols_to_display.append('notes')
+
+            table_fig = go.Figure(data=[go.Table(
+                header=dict(values=[col.title() for col in cols_to_display], fill_color='lightgrey', align='left'),
+                cells=dict(values=[overdue_df[col] for col in cols_to_display],
+                           fill_color=[['#ffeeee' if status != 'Completed' else '#ffffff' for status in overdue_df['status']]],
+                           align='left')
+            )])
+            st.plotly_chart(table_fig, use_container_width=True)
         else:
             st.success("No overdue tasks!")
 
@@ -60,7 +71,12 @@ if uploaded_file:
         st.plotly_chart(pie_chart)
 
         st.subheader("📄 All Tasks")
-        st.dataframe(df)
+        all_cols = df.columns.tolist()
+        table_all = go.Figure(data=[go.Table(
+            header=dict(values=[col.title() for col in all_cols], fill_color='lightblue', align='left'),
+            cells=dict(values=[df[col] for col in all_cols], align='left')
+        )])
+        st.plotly_chart(table_all, use_container_width=True)
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
