@@ -21,28 +21,31 @@ if uploaded_file:
         df = pd.read_excel(xls, sheet_name=sheet, header=header_idx)
         original_columns = df.columns.tolist()
 
-        df.columns = df.columns.str.strip().str.lower()
+        # Normalize column names for processing
+        cleaned_columns = df.columns.str.strip().str.lower()
+        df.columns = cleaned_columns
 
         if 'task' not in df.columns:
             raise Exception("'task' column not found in the uploaded file.")
 
-        # Infer vendor column: create 'vendor' by forward filling first column if it's unnamed
+        # Infer vendor column if not explicitly named
         if 'vendor' not in df.columns:
-            first_col_name = original_columns[0].strip().lower()
-            df.insert(0, 'vendor', df[first_col_name])
+            possible_vendor_col = df.columns[0]  # assume first column contains vendor info
+            df.insert(0, 'vendor', df[possible_vendor_col])
             df['vendor'] = df['vendor'].fillna(method='ffill')
 
+        # Standardize key column names
         df.rename(columns={'target date': 'target_date', 'action with': 'owner'}, inplace=True)
 
         df['task'] = df['task'].astype(str).fillna('').str.strip()
         df['vendor'] = df['vendor'].astype(str).fillna('').str.strip()
         df['owner'] = df['owner'].fillna('Unassigned')
 
+        # Filter out blank or header-like task rows
         df = df[df['task'].apply(lambda x: x.strip() != '' and x.lower() not in ['details', 'task'])]
 
         df['target_date'] = pd.to_datetime(df['target_date'], errors='coerce')
         df['status'] = df['status'].fillna('').str.strip().str.title()
-
         df = df[df['status'] != '']
 
         overdue_df = df[(df['status'] != 'Completed') & (df['target_date'] < datetime.today())]
@@ -56,7 +59,7 @@ if uploaded_file:
             chart = px.bar(overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks'), x='owner', y='Overdue Tasks')
             st.plotly_chart(chart)
 
-            st.dataframe(overdue_df[original_columns])
+            st.dataframe(overdue_df)
         else:
             st.success("No overdue tasks!")
 
@@ -66,7 +69,7 @@ if uploaded_file:
         st.plotly_chart(pie_chart)
 
         st.subheader("📄 All Tasks")
-        st.dataframe(df[original_columns])
+        st.dataframe(df)
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
