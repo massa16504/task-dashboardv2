@@ -51,22 +51,8 @@ if uploaded_file:
             chart = px.bar(overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks'), x='owner', y='Overdue Tasks')
             st.plotly_chart(chart)
 
-            cols_to_display = ['vendor', 'task', 'owner', 'status', 'target_date']
-            if 'notes' in overdue_df.columns:
-                cols_to_display.append('notes')
-
-            cell_colors = []
-            for col in cols_to_display:
-                if col == 'status':
-                    cell_colors.append(['#ffeeee' if s != 'Completed' else '#ffffff' for s in overdue_df[col]])
-                else:
-                    cell_colors.append(['#ffeeee' if s != 'Completed' else '#ffffff' for s in overdue_df['status']])
-
-            fig = go.Figure(data=[go.Table(
-                header=dict(values=[col.title() for col in cols_to_display], fill_color='lightgrey', align='left'),
-                cells=dict(values=[overdue_df[col] for col in cols_to_display], fill_color=cell_colors, align='left')
-            )])
-            st.plotly_chart(fig, use_container_width=True)
+            cols_to_display = df.columns.tolist()
+            st.dataframe(overdue_df[cols_to_display])
         else:
             st.success("No overdue tasks!")
 
