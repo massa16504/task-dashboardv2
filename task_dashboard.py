@@ -1,12 +1,12 @@
 import pandas as pd
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 import plotly.express as px
 
 st.set_page_config(page_title="Task Dashboard", layout="wide")
 st.title("\U0001F4CA Task Dashboard")
 
-uploaded_file = st.file_uploader("📅 Upload your Excel file", type=["xlsx"])
+uploaded_file = st.file_uploader("\ud83d\udcc5 Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
@@ -57,12 +57,12 @@ if uploaded_file:
         st.metric("Overdue Tasks", len(overdue_df))
 
         # Overdue section
-        st.subheader("⚠️ Overdue Tasks by Owner")
+        st.subheader("\u26a0\ufe0f Overdue Tasks by Owner")
         if not overdue_df.empty:
             st.plotly_chart(
                 px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
                        x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
-            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']].astype(str))
+            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']])
         else:
             st.success("No overdue tasks found!")
 
@@ -72,15 +72,15 @@ if uploaded_file:
             px.pie(df.groupby('Status').size().reset_index(name='Count'),
                    names='Status', values='Count', title="Task Status Breakdown"))
 
-        # Owner Breakdown
-        st.subheader("\U0001F465 Task Ownership Breakdown")
-        st.dataframe(df.groupby(['Vendor', 'Owner']).size().reset_index(name='Task Count').astype(str))
-
-        # New Feature: Top 5 Owners with Most Tasks
-        st.subheader("\U0001F3C6 Top 5 Owners with Most Tasks")
-        top_owners = df['Owner'].value_counts().head(5).reset_index()
-        top_owners.columns = ['Owner', 'Task Count']
-        st.bar_chart(top_owners.set_index('Owner'))
+        # Weekly Progress Summary
+        st.subheader("\U0001F4C6 Weekly Progress Summary")
+        past_week = today - timedelta(days=7)
+        recent_df = df[df['Target Date'] >= past_week]
+        if not recent_df.empty:
+            weekly_summary = recent_df.groupby(['Status']).size().reset_index(name='Count')
+            st.dataframe(weekly_summary)
+        else:
+            st.info("No task updates in the past week.")
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
