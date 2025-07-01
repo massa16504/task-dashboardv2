@@ -68,8 +68,9 @@ if uploaded_file:
         pie_chart = px.pie(status_count, names='status', values='Count', title="Task Status Breakdown")
         st.plotly_chart(pie_chart)
 
-        st.subheader("📄 All Tasks")
-        st.dataframe(df[['vendor', 'outcome', 'task', 'start date', 'target_date', 'status', 'cross_functional', 'owner', 'notes']])
+        st.subheader("👥 Task Ownership Breakdown")
+        ownership = df.groupby('owner').size().reset_index(name='Assigned Tasks')
+        st.dataframe(ownership.sort_values('Assigned Tasks', ascending=False))
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
