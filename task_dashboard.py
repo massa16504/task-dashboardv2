@@ -55,13 +55,18 @@ if uploaded_file:
             if 'notes' in overdue_df.columns:
                 cols_to_display.append('notes')
 
-            table_fig = go.Figure(data=[go.Table(
+            cell_colors = []
+            for col in cols_to_display:
+                if col == 'status':
+                    cell_colors.append(['#ffeeee' if s != 'Completed' else '#ffffff' for s in overdue_df[col]])
+                else:
+                    cell_colors.append(['#ffeeee' if s != 'Completed' else '#ffffff' for s in overdue_df['status']])
+
+            fig = go.Figure(data=[go.Table(
                 header=dict(values=[col.title() for col in cols_to_display], fill_color='lightgrey', align='left'),
-                cells=dict(values=[overdue_df[col] for col in cols_to_display],
-                           fill_color=[['#ffeeee' if status != 'Completed' else '#ffffff' for status in overdue_df['status']]],
-                           align='left')
+                cells=dict(values=[overdue_df[col] for col in cols_to_display], fill_color=cell_colors, align='left')
             )])
-            st.plotly_chart(table_fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.success("No overdue tasks!")
 
@@ -72,11 +77,7 @@ if uploaded_file:
 
         st.subheader("📄 All Tasks")
         all_cols = df.columns.tolist()
-        table_all = go.Figure(data=[go.Table(
-            header=dict(values=[col.title() for col in all_cols], fill_color='lightblue', align='left'),
-            cells=dict(values=[df[col] for col in all_cols], align='left')
-        )])
-        st.plotly_chart(table_all, use_container_width=True)
+        st.dataframe(df[all_cols])
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
