@@ -4,9 +4,9 @@ from datetime import datetime
 import plotly.express as px
 
 st.set_page_config(page_title="Task Dashboard", layout="wide")
-st.title("📊 Task Dashboard")
+st.title("\U0001F4CA Task Dashboard")
 
-uploaded_file = st.file_uploader("📥 Upload your Excel file", type=["xlsx"])
+uploaded_file = st.file_uploader("\ud83d\udcc5 Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
@@ -23,7 +23,7 @@ if uploaded_file:
         # Step 2: Load the proper DataFrame
         df = pd.read_excel(xls, sheet_name=sheet, header=header_row_idx)
 
-        # Step 3: Rebuild vendor column
+        # Step 3: Rebuild vendor column from merged layout
         vendor_series = raw_df.iloc[:, 0].fillna(method='ffill')
         vendor_values = vendor_series[header_row_idx+1:].reset_index(drop=True)
         df.insert(0, 'Vendor', vendor_values)
@@ -52,12 +52,12 @@ if uploaded_file:
         overdue_df = df[(df['Status'] != 'Completed') & (df['Target Date'] < today)]
 
         # Overview
-        st.subheader("📈 Overview")
+        st.subheader("\U0001F4C8 Overview")
         st.metric("Total Tasks", len(df))
         st.metric("Overdue Tasks", len(overdue_df))
 
         # Overdue section
-        st.subheader("⚠️ Overdue Tasks by Owner")
+        st.subheader("\u26a0\ufe0f Overdue Tasks by Owner")
         if not overdue_df.empty:
             st.plotly_chart(
                 px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
@@ -67,23 +67,20 @@ if uploaded_file:
             st.success("No overdue tasks found!")
 
         # Status Breakdown
-        st.subheader("📊 Task Status Distribution")
+        st.subheader("\U0001F4CA Task Status Distribution")
         st.plotly_chart(
             px.pie(df.groupby('Status').size().reset_index(name='Count'),
                    names='Status', values='Count', title="Task Status Breakdown"))
 
         # Owner Breakdown
-        st.subheader("👥 Task Ownership Breakdown")
+        st.subheader("\U0001F465 Task Ownership Breakdown")
         st.dataframe(df.groupby(['Vendor', 'Owner']).size().reset_index(name='Task Count'))
 
-        # New Feature: Tasks Missing Start or Target Date
-        st.subheader("🕒 Tasks Missing Dates")
-        missing_dates = df[df['Target Date'].isna() | df['Start Date'].isna()]
-        if not missing_dates.empty:
-            st.warning("Some tasks are missing Start or Target Dates.")
-            st.dataframe(missing_dates[['Vendor', 'Outcome', 'Task', 'Start Date', 'Target Date', 'Owner']])
-        else:
-            st.success("All tasks have valid dates.")
+        # New Feature: Top 5 Owners with Most Tasks
+        st.subheader("\U0001F3C6 Top 5 Owners with Most Tasks")
+        top_owners = df['Owner'].value_counts().head(5).reset_index()
+        top_owners.columns = ['Owner', 'Task Count']
+        st.bar_chart(top_owners.set_index('Owner'))
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
