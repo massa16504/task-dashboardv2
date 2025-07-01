@@ -15,34 +15,35 @@ if uploaded_file:
         sheet = xls.sheet_names[0]
         raw_df = pd.read_excel(xls, sheet_name=sheet, header=None)
 
+        # Find the header row (where "Task" appears)
         header_idx = raw_df.index[raw_df.apply(lambda row: row.astype(str).str.lower().str.contains('task').any(), axis=1)].tolist()
-        header_idx = header_idx[0] if header_idx else 0
+        if not header_idx:
+            raise Exception("Header row with 'Task' not found.")
+        header_idx = header_idx[0]
 
         df = pd.read_excel(xls, sheet_name=sheet, header=header_idx)
-        original_columns = df.columns.tolist()
 
-        # Normalize column names for processing
-        cleaned_columns = df.columns.str.strip().str.lower()
-        df.columns = cleaned_columns
+        # Fill down the vendor name from merged cells
+        vendor_col = raw_df.iloc[:header_idx, 0].dropna().tolist()
+        vendor_labels = raw_df.iloc[:, 0].fillna(method='ffill')
+        df.insert(0, 'vendor', vendor_labels[header_idx+1:].reset_index(drop=True))
 
-        if 'task' not in df.columns:
-            raise Exception("'task' column not found in the uploaded file.")
+        # Clean column names
+        df.columns = df.columns.str.strip().str.lower()
 
-        # Infer vendor column if not explicitly named
-        if 'vendor' not in df.columns:
-            possible_vendor_col = df.columns[0]  # assume first column contains vendor info
-            df.insert(0, 'vendor', df[possible_vendor_col])
-            df['vendor'] = df['vendor'].fillna(method='ffill')
+        # Rename key columns for consistency
+        df.rename(columns={
+            'target date': 'target_date',
+            'action with': 'owner',
+            'cross functional': 'cross_functional'
+        }, inplace=True)
 
-        # Standardize key column names
-        df.rename(columns={'target date': 'target_date', 'action with': 'owner'}, inplace=True)
-
+        # Drop blank and title rows
         df['task'] = df['task'].astype(str).fillna('').str.strip()
+        df = df[df['task'].apply(lambda x: x.lower() not in ['', 'details', 'task'])]
+
         df['vendor'] = df['vendor'].astype(str).fillna('').str.strip()
         df['owner'] = df['owner'].fillna('Unassigned')
-
-        # Filter out blank or header-like task rows
-        df = df[df['task'].apply(lambda x: x.strip() != '' and x.lower() not in ['details', 'task'])]
 
         df['target_date'] = pd.to_datetime(df['target_date'], errors='coerce')
         df['status'] = df['status'].fillna('').str.strip().str.title()
@@ -58,8 +59,7 @@ if uploaded_file:
         if not overdue_df.empty:
             chart = px.bar(overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks'), x='owner', y='Overdue Tasks')
             st.plotly_chart(chart)
-
-            st.dataframe(overdue_df)
+            st.dataframe(overdue_df[['vendor', 'outcome', 'task', 'target_date', 'status', 'owner', 'notes']])
         else:
             st.success("No overdue tasks!")
 
@@ -69,7 +69,7 @@ if uploaded_file:
         st.plotly_chart(pie_chart)
 
         st.subheader("📄 All Tasks")
-        st.dataframe(df)
+        st.dataframe(df[['vendor', 'outcome', 'task', 'start date', 'target_date', 'status', 'cross_functional', 'owner', 'notes']])
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
