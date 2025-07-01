@@ -2,12 +2,11 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 import plotly.express as px
-import plotly.graph_objects as go
 
 st.set_page_config(page_title="Task Dashboard", layout="wide")
 st.title("📊 Task Dashboard")
 
-uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
+uploaded_file = st.file_uploader("📥 Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
@@ -15,62 +14,76 @@ if uploaded_file:
         sheet = xls.sheet_names[0]
         raw_df = pd.read_excel(xls, sheet_name=sheet, header=None)
 
-        # Find the header row (where "Task" appears)
-        header_idx = raw_df.index[raw_df.apply(lambda row: row.astype(str).str.lower().str.contains('task').any(), axis=1)].tolist()
-        if not header_idx:
-            raise Exception("Header row with 'Task' not found.")
-        header_idx = header_idx[0]
+        # Step 1: Locate the header row
+        header_row_idx = raw_df.index[raw_df.apply(lambda row: row.astype(str).str.lower().str.contains('task').any(), axis=1)].tolist()
+        if not header_row_idx:
+            raise Exception("Could not find header row containing 'Task'")
+        header_row_idx = header_row_idx[0]
 
-        df = pd.read_excel(xls, sheet_name=sheet, header=header_idx)
+        # Step 2: Load the proper DataFrame
+        df = pd.read_excel(xls, sheet_name=sheet, header=header_row_idx)
 
-        # Fill down the vendor name from merged cells
-        vendor_col = raw_df.iloc[:header_idx, 0].dropna().tolist()
-        vendor_labels = raw_df.iloc[:, 0].fillna(method='ffill')
-        df.insert(0, 'vendor', vendor_labels[header_idx+1:].reset_index(drop=True))
+        # Step 3: Rebuild vendor column
+        vendor_series = raw_df.iloc[:, 0].fillna(method='ffill')
+        vendor_values = vendor_series[header_row_idx+1:].reset_index(drop=True)
+        df.insert(0, 'Vendor', vendor_values)
 
-        # Clean column names
-        df.columns = df.columns.str.strip().str.lower()
-
-        # Rename key columns for consistency
+        # Step 4: Clean and rename columns
+        df.columns = df.columns.str.strip()
         df.rename(columns={
-            'target date': 'target_date',
-            'action with': 'owner',
-            'cross functional': 'cross_functional'
+            'Target Date': 'Target Date',
+            'Start Date': 'Start Date',
+            'Action with': 'Owner',
+            'Cross Functional': 'Cross Functional'
         }, inplace=True)
 
-        # Drop blank and title rows
-        df['task'] = df['task'].astype(str).fillna('').str.strip()
-        df = df[df['task'].apply(lambda x: x.lower() not in ['', 'details', 'task'])]
+        # Step 5: Clean task and filter out blanks, "Details", etc.
+        df['Task'] = df['Task'].astype(str).str.strip()
+        df = df[~df['Task'].str.lower().isin(['', 'details', 'task'])]
 
-        df['vendor'] = df['vendor'].astype(str).fillna('').str.strip()
-        df['owner'] = df['owner'].fillna('Unassigned')
+        # Ensure date parsing
+        df['Target Date'] = pd.to_datetime(df['Target Date'], errors='coerce')
+        df['Status'] = df['Status'].fillna('').str.strip().str.title()
+        df = df[df['Status'] != '']
+        df['Owner'] = df['Owner'].fillna('Unassigned')
 
-        df['target_date'] = pd.to_datetime(df['target_date'], errors='coerce')
-        df['status'] = df['status'].fillna('').str.strip().str.title()
-        df = df[df['status'] != '']
+        # Compute Overdue
+        today = pd.to_datetime(datetime.today().date())
+        overdue_df = df[(df['Status'] != 'Completed') & (df['Target Date'] < today)]
 
-        overdue_df = df[(df['status'] != 'Completed') & (df['target_date'] < datetime.today())]
-
+        # Overview
         st.subheader("📈 Overview")
         st.metric("Total Tasks", len(df))
         st.metric("Overdue Tasks", len(overdue_df))
 
+        # Overdue section
         st.subheader("⚠️ Overdue Tasks by Owner")
         if not overdue_df.empty:
-            chart = px.bar(overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks'), x='owner', y='Overdue Tasks')
-            st.plotly_chart(chart)
-            st.dataframe(overdue_df[['vendor', 'outcome', 'task', 'target_date', 'status', 'owner', 'notes']])
+            st.plotly_chart(
+                px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
+                       x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
+            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']])
         else:
-            st.success("No overdue tasks!")
+            st.success("No overdue tasks found!")
 
+        # Status Breakdown
         st.subheader("📊 Task Status Distribution")
-        status_count = df.groupby('status').size().reset_index(name='Count')
-        pie_chart = px.pie(status_count, names='status', values='Count', title="Task Status Breakdown")
-        st.plotly_chart(pie_chart)
+        st.plotly_chart(
+            px.pie(df.groupby('Status').size().reset_index(name='Count'),
+                   names='Status', values='Count', title="Task Status Breakdown"))
 
+        # Owner Breakdown
         st.subheader("👥 Task Ownership Breakdown")
-        ownership = df.groupby('owner').size().reset_index(name='Assigned Tasks')
-        st.dataframe(ownership.sort_values('Assigned Tasks', ascending=False))
+        st.dataframe(df.groupby(['Vendor', 'Owner']).size().reset_index(name='Task Count'))
+
+        # New Feature: Tasks Missing Start or Target Date
+        st.subheader("🕒 Tasks Missing Dates")
+        missing_dates = df[df['Target Date'].isna() | df['Start Date'].isna()]
+        if not missing_dates.empty:
+            st.warning("Some tasks are missing Start or Target Dates.")
+            st.dataframe(missing_dates[['Vendor', 'Outcome', 'Task', 'Start Date', 'Target Date', 'Owner']])
+        else:
+            st.success("All tasks have valid dates.")
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
