@@ -19,13 +19,18 @@ if uploaded_file:
         header_idx = header_idx[0] if header_idx else 0
 
         df = pd.read_excel(xls, sheet_name=sheet, header=header_idx)
+        original_columns = df.columns.tolist()
+
         df.columns = df.columns.str.strip().str.lower()
 
         if 'task' not in df.columns:
             raise Exception("'task' column not found in the uploaded file.")
 
-        if df.columns[1] != 'vendor':
-            df.columns.values[1] = 'vendor'
+        # Infer vendor column: create 'vendor' by forward filling first column if it's unnamed
+        if 'vendor' not in df.columns:
+            first_col_name = original_columns[0].strip().lower()
+            df.insert(0, 'vendor', df[first_col_name])
+            df['vendor'] = df['vendor'].fillna(method='ffill')
 
         df.rename(columns={'target date': 'target_date', 'action with': 'owner'}, inplace=True)
 
@@ -51,8 +56,7 @@ if uploaded_file:
             chart = px.bar(overdue_df.groupby('owner').size().reset_index(name='Overdue Tasks'), x='owner', y='Overdue Tasks')
             st.plotly_chart(chart)
 
-            cols_to_display = df.columns.tolist()
-            st.dataframe(overdue_df[cols_to_display])
+            st.dataframe(overdue_df[original_columns])
         else:
             st.success("No overdue tasks!")
 
@@ -62,8 +66,7 @@ if uploaded_file:
         st.plotly_chart(pie_chart)
 
         st.subheader("📄 All Tasks")
-        all_cols = df.columns.tolist()
-        st.dataframe(df[all_cols])
+        st.dataframe(df[original_columns])
 
     except Exception as e:
         st.error(f"Error processing file: {e}")
