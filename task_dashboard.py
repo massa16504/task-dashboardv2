@@ -6,7 +6,7 @@ import plotly.express as px
 st.set_page_config(page_title="Task Dashboard", layout="wide")
 st.title("\U0001F4CA Task Dashboard")
 
-uploaded_file = st.file_uploader("\ud83d\udcc5 Upload your Excel file", type=["xlsx"])
+uploaded_file = st.file_uploader("📅 Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
@@ -57,12 +57,12 @@ if uploaded_file:
         st.metric("Overdue Tasks", len(overdue_df))
 
         # Overdue section
-        st.subheader("\u26a0\ufe0f Overdue Tasks by Owner")
+        st.subheader("⚠️ Overdue Tasks by Owner")
         if not overdue_df.empty:
             st.plotly_chart(
                 px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
                        x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
-            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']])
+            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']].astype(str))
         else:
             st.success("No overdue tasks found!")
 
@@ -74,7 +74,7 @@ if uploaded_file:
 
         # Owner Breakdown
         st.subheader("\U0001F465 Task Ownership Breakdown")
-        st.dataframe(df.groupby(['Vendor', 'Owner']).size().reset_index(name='Task Count'))
+        st.dataframe(df.groupby(['Vendor', 'Owner']).size().reset_index(name='Task Count').astype(str))
 
         # New Feature: Top 5 Owners with Most Tasks
         st.subheader("\U0001F3C6 Top 5 Owners with Most Tasks")
