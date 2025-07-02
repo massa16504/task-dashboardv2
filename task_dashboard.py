@@ -42,9 +42,9 @@ if uploaded_file:
 
         # STEP 5: Filter Task column
         df['Task'] = df['Task'].astype(str).str.strip()
-        df = df[~df['Task'].str.lower().isin(['', 'details', 'task'])]  # remove placeholders
-        df = df[df['Task'].str.len() > 3]  # ignore super short / nonsense tasks
-        df = df[df['Task'].str.contains(r'[a-zA-Z]', na=False)]  # remove entries with no real text
+        df = df[~df['Task'].str.lower().isin(['', 'details', 'task'])]
+        df = df[df['Task'].str.len() > 3]
+        df = df[df['Task'].str.contains(r'[a-zA-Z]', na=False)]
 
         # STEP 6: Clean other columns
         df['Target Date'] = pd.to_datetime(df['Target Date'], errors='coerce')
@@ -54,7 +54,19 @@ if uploaded_file:
 
         # STEP 7: Compute overdue tasks
         today = pd.to_datetime(datetime.today().date())
+        df['Start Date'] = pd.to_datetime(df['Start Date'], errors='coerce')
         overdue_df = df[(df['Status'] != 'Completed') & (df['Target Date'] < today)]
+
+        # 🔍 SIDEBAR FILTER: VENDOR
+        with st.sidebar:
+            st.header("🔎 Filter")
+            selected_vendors = st.multiselect(
+                "Select Vendor(s)", options=sorted(df['Vendor'].dropna().unique()), default=None
+            )
+
+        if selected_vendors:
+            df = df[df['Vendor'].isin(selected_vendors)]
+            overdue_df = overdue_df[overdue_df['Vendor'].isin(selected_vendors)]
 
         # DASHBOARD SECTIONS
 
@@ -67,20 +79,22 @@ if uploaded_file:
         st.subheader("📊 Task Status Distribution")
         st.plotly_chart(
             px.pie(df.groupby('Status').size().reset_index(name='Count'),
-                   names='Status', values='Count', title="Task Status Breakdown"))
+                   names='Status', values='Count', title="Task Status Breakdown")
+        )
 
-        # 3. Overdue Tasks with AgGrid filtering
+        # 3. Overdue Tasks Section
         st.subheader("⚠️ Overdue Tasks by Owner")
         if not overdue_df.empty:
             st.plotly_chart(
                 px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
-                       x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
+                       x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner")
+            )
 
             st.markdown("### 🗂️ Interactive Overdue Task Table (with filters)")
 
             df_display = overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']]
             gb = GridOptionsBuilder.from_dataframe(df_display)
-            gb.configure_default_column(filter=True, sortable=True, resizable=True)  # ✅ enable filtering
+            gb.configure_default_column(filter=True, sortable=True, resizable=True)
             grid_options = gb.build()
 
             AgGrid(
@@ -88,7 +102,7 @@ if uploaded_file:
                 gridOptions=grid_options,
                 height=400,
                 theme="streamlit",
-                enable_enterprise_modules=True  # Optional: advanced filters and UI
+                enable_enterprise_modules=True
             )
         else:
             st.success("No overdue tasks found!")
