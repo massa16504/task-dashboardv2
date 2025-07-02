@@ -62,7 +62,7 @@ if uploaded_file:
         st.metric("Total Tasks", len(df))
         st.metric("Overdue Tasks", len(overdue_df))
 
-        # 2. Task Status Distribution (moved up)
+        # 2. Task Status Distribution
         st.subheader("📊 Task Status Distribution")
         st.plotly_chart(
             px.pie(df.groupby('Status').size().reset_index(name='Count'),
@@ -74,7 +74,12 @@ if uploaded_file:
             st.plotly_chart(
                 px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
                        x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
-            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']])
+
+            st.experimental_data_editor(
+                overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']],
+                num_rows="dynamic",
+                use_container_width=True
+            )
         else:
             st.success("No overdue tasks found!")
 
