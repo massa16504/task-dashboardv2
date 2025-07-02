@@ -56,18 +56,28 @@ if uploaded_file:
         overdue_df = df[(df['Status'] != 'Completed') & (df['Target Date'] < today)]
 
         # DASHBOARD SECTIONS
-        st.subheader("📈 Overview")
-        st.metric("Total Tasks", len(df))
-        st.metric("Overdue Tasks", len(overdue_df))
 
-        st.subheader("⚠️ Overdue Tasks by Owner")
-        if not overdue_df.empty:
-            st.plotly_chart(
-                px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
-                       x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
-            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']])
-        else:
-            st.success("No overdue tasks found!")
+# 1. Overview
+st.subheader("📈 Overview")
+st.metric("Total Tasks", len(df))
+st.metric("Overdue Tasks", len(overdue_df))
+
+# 2. Task Status Distribution (moved up)
+st.subheader("📊 Task Status Distribution")
+st.plotly_chart(
+    px.pie(df.groupby('Status').size().reset_index(name='Count'),
+           names='Status', values='Count', title="Task Status Breakdown"))
+
+# 3. Overdue Tasks
+st.subheader("⚠️ Overdue Tasks by Owner")
+if not overdue_df.empty:
+    st.plotly_chart(
+        px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
+               x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
+    st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']])
+else:
+    st.success("No overdue tasks found!")
+
 
         st.subheader("📊 Task Status Distribution")
         st.plotly_chart(
