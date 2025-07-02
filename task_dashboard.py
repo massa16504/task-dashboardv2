@@ -62,7 +62,7 @@ if uploaded_file:
             st.plotly_chart(
                 px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
                        x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
-            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']].astype(str))
+            st.dataframe(overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']])
         else:
             st.success("No overdue tasks found!")
 
@@ -83,8 +83,6 @@ if uploaded_file:
             st.info("No task updates in the past week.")
 
     except Exception as e:
-        import unicodedata
-        safe_error = unicodedata.normalize('NFKD', str(e)).encode('ascii', 'ignore').decode('ascii')
-        st.error(f"Error processing file: {safe_error}")
+        st.error(f"Error processing file: {e}")
 else:
     st.info("Upload an Excel file to begin.")
