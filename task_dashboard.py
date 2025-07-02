@@ -83,6 +83,8 @@ if uploaded_file:
             st.info("No task updates in the past week.")
 
     except Exception as e:
-        st.error(f"Error processing file: {e}")
+        import unicodedata
+        safe_error = unicodedata.normalize('NFKD', str(e)).encode('ascii', 'ignore').decode('ascii')
+        st.error(f"Error processing file: {safe_error}")
 else:
     st.info("Upload an Excel file to begin.")
