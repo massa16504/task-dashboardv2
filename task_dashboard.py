@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 import plotly.express as px
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 st.set_page_config(page_title="Task Dashboard", layout="wide")
 st.title("📊 Task Dashboard")
@@ -68,18 +69,21 @@ if uploaded_file:
             px.pie(df.groupby('Status').size().reset_index(name='Count'),
                    names='Status', values='Count', title="Task Status Breakdown"))
 
-        # 3. Overdue Tasks
+        # 3. Overdue Tasks with AgGrid
         st.subheader("⚠️ Overdue Tasks by Owner")
         if not overdue_df.empty:
             st.plotly_chart(
                 px.bar(overdue_df.groupby('Owner').size().reset_index(name='Overdue Tasks'),
                        x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner"))
 
-            st.experimental_data_editor(
-                overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']],
-                num_rows="dynamic",
-                use_container_width=True
-            )
+            st.markdown("### 🗂️ Interactive Overdue Task Table (with filters)")
+
+            df_display = overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']]
+            gb = GridOptionsBuilder.from_dataframe(df_display)
+            gb.configure_default_column(filterable=True, sortable=True, resizable=True)
+            grid_options = gb.build()
+
+            AgGrid(df_display, gridOptions=grid_options, height=400, theme="streamlit")
         else:
             st.success("No overdue tasks found!")
 
