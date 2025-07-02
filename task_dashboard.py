@@ -48,13 +48,13 @@ if uploaded_file:
 
         # STEP 6: Clean other columns
         df['Target Date'] = pd.to_datetime(df['Target Date'], errors='coerce')
+        df['Start Date'] = pd.to_datetime(df['Start Date'], errors='coerce')
         df['Status'] = df['Status'].fillna('').str.strip().str.title()
         df = df[df['Status'] != '']
         df['Owner'] = df['Owner'].fillna('Unassigned')
 
         # STEP 7: Compute overdue tasks
         today = pd.to_datetime(datetime.today().date())
-        df['Start Date'] = pd.to_datetime(df['Start Date'], errors='coerce')
         overdue_df = df[(df['Status'] != 'Completed') & (df['Target Date'] < today)]
 
         # 🔍 SIDEBAR FILTER: VENDOR
@@ -107,5 +107,26 @@ if uploaded_file:
         else:
             st.success("No overdue tasks found!")
 
+        # 4. ✅ Vendor Completion Status
+        st.subheader("📦 Vendor Completion Status")
+        vendor_status = df.groupby(['Vendor', 'Status']).size().unstack(fill_value=0)
+        vendor_status['Total'] = vendor_status.sum(axis=1)
+        if 'Completed' not in vendor_status.columns:
+            vendor_status['Completed'] = 0
+        vendor_status['% Completed'] = (vendor_status['Completed'] / vendor_status['Total']) * 100
+
+        st.plotly_chart(
+            px.bar(
+                vendor_status.reset_index(),
+                x='% Completed',
+                y='Vendor',
+                orientation='h',
+                title="Vendor Task Completion Percentage",
+                text='% Completed',
+                labels={'% Completed': 'Completion %'}
+            ).update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+        )
+
     except Exception as e:
         st.error(f"❌ An error occurred: {e}")
+
