@@ -90,7 +90,7 @@ if uploaded_file:
                        x='Owner', y='Overdue Tasks', title="Overdue Tasks by Owner")
             )
 
-            st.markdown("### 🗂️ Interactive Overdue Task Table (with filters)")
+            st.markdown("### 🗂️ Overdue Task Table")
 
             df_display = overdue_df[['Vendor', 'Outcome', 'Task', 'Target Date', 'Status', 'Owner', 'Notes']]
             gb = GridOptionsBuilder.from_dataframe(df_display)
